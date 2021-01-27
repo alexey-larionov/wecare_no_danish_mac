@@ -1,0 +1,240 @@
+---
+title: "WES: BC8 crude counts"
+author: "Alexey Larionov"
+date: "12 January 2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+# Summary
+
+- Select pthogenic variants in BC8
+- Calculate crude counts: totals, and separately for cases and controls  
+- Fisher test for the crude counts  
+
+Check call rates (per variant and per sample) before and after filtering.  
+
+<style>
+pre{
+  overflow-x: auto;
+}
+pre code{
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+```{r echo=F}
+options(width=999)
+```
+
+# Start section
+
+```{r}
+
+# Time
+Sys.time()
+
+# Memory
+gc()
+
+# Clean up
+rm(list=ls())
+graphics.off()
+
+# Options
+options(stringsAsFactors = F)
+
+# Working folders
+
+#base_folder <- "/rds/project/erf33/rds-erf33-medgen" # hpc
+#project_folder=file.path(base_folder,"users/alexey/wecare/reanalysis_wo_danish_2020") # hpc
+base_folder <- "/Users/alexey/Documents" # mac
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021") # mac
+
+scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
+setwd(scripts_folder)
+
+data_folder <- file.path(project_folder,"data","s07_crude_counts")
+
+library(dplyr)
+
+```
+
+# Load data
+
+```{r}
+
+load(file.path(data_folder,"s01_crude_counts_per_variant.RData"))
+
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021") # mac
+scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
+data_folder <- file.path(project_folder,"data","s07_crude_counts")
+
+bc8_genes <- scan(file.path(data_folder,"bc8_genes.txt"),what="character")
+
+```
+
+# Check data
+
+```{r}
+
+ls()
+
+# Check objects dimentions
+dim(genotypes.mx)
+dim(phenotypes.df)
+dim(variants.df)
+
+# Check that the tables and matrices are in sync
+sum(phenotypes.df$wes_id != colnames(genotypes.mx))
+sum(variants.df$ID != rownames(genotypes.mx))
+
+# Check list of genes
+bc8_genes
+
+```
+
+# Select variants 
+
+```{r}
+
+# Keep only variants in the selected genes
+bc8_variants.df <- variants.df[variants.df$vep_SYMBOL %in% bc8_genes,]
+dim(bc8_variants.df)
+
+# Select LoF-s as defined by VEP IMPACT
+lof <- bc8_variants.df$vep_IMPACT == "HIGH"
+sum(lof)
+
+# Explore ClinVar annotations
+bc8_variants.df %>% 
+  group_by(CLNSIG) %>% 
+  summarise(counts=n()) %>% 
+  arrange(desc(counts))
+
+# Select pathogenic variants
+likely_pathogenic <- 
+  grepl("Pathogenic",bc8_variants.df$CLNSIG) | 
+  grepl("Likely_pathogenic",bc8_variants.df$CLNSIG) |
+  grepl("risk_factor",bc8_variants.df$CLNSIG)
+sum(likely_pathogenic)
+
+#bc8_variants.df %>% 
+#  group_by(CLNREVSTAT) %>% 
+#  summarise(counts=n()) %>% 
+#  arrange(desc(counts))
+
+#with_good_support <-
+#  variants.df$CLNREVSTAT == "reviewed_by_expert_panel" |
+#  variants.df$CLNREVSTAT == "criteria_provided,_multiple_submitters,_no_conflicts" |
+#  variants.df$CLNREVSTAT == "criteria_provided,_single_submitter""
+#etc
+  
+# Rare variants
+rare <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.05
+sum(rare)
+
+#uncommon <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.05
+#sum(uncommon)
+
+# Known benign
+#known_benign <- 
+#  grepl("Benign",bc8_variants.df$CLNSIG) | 
+#  grepl("Likely_benign",bc8_variants.df$CLNSIG)
+#sum(known_benign)
+
+# Functionally important variants
+fiv <- (lof | likely_pathogenic) & rare
+sum(fiv)
+
+bc8_fiv.df <- bc8_variants.df[fiv,] %>% 
+  select(ID,vep_SYMBOL,vep_Consequence,vep_IMPACT,CLNSIG,vep_gnomAD_NFE_AF,
+         total_ac,total_an,total_af,
+         controls_ac,controls_an,controls_af,
+         cases_ac,cases_an,cases_af)
+bc8_fiv.df
+# View(bc8_fiv.df)
+
+# Clean-up
+rm(lof,likely_pathogenic,rare,fiv)
+
+```
+
+# Aggregated crude counts and Fisher test
+
+```{r}
+
+# Calculate crude counts
+controls_ac <- sum(bc8_fiv.df$controls_ac)
+controls_an <- sum(bc8_fiv.df$controls_an)
+controls_af <- controls_ac / controls_an
+
+cases_ac <- sum(bc8_fiv.df$cases_ac)
+cases_an <- sum(bc8_fiv.df$cases_an)
+cases_af <- cases_ac / cases_an
+
+afs <- c(controls_af,cases_af)
+names(afs) <- c("Controls","Cases")
+mp <- barplot(afs, ylim=c(0,0.0055), main="WECARE WES w/o Danish: 172 controls vs 163 cases\nCrude counts Fisher p=0.059", ylab="Mean AF in selected variants")
+text(mp,afs+0.0003,round(afs,4))
+
+# Calculate Fisher test
+fisher_matrix <- matrix(c(cases_ac, cases_an - cases_ac,
+                          controls_ac, controls_an - controls_ac),
+                          nrow=2, byrow=T)
+
+colnames(fisher_matrix) <- c("Alt","Ref")
+rownames(fisher_matrix) <- c("Cases","Controls")
+fisher_matrix 
+
+fisher.test(fisher_matrix, conf.int=T)
+
+# Clean-up
+rm(controls_ac, controls_an, controls_af,
+   cases_ac, cases_an, cases_af,
+   afs, mp, fisher_matrix)
+
+```
+
+# Check data
+
+```{r}
+
+ls()
+
+# Check objects dimentions
+dim(bc8_variants.df)
+dim(bc8_fiv.df)
+
+dim(genotypes.mx)
+dim(phenotypes.df)
+dim(variants.df)
+
+# Check that the tables and matrices are in sync
+sum(phenotypes.df$wes_id != colnames(genotypes.mx))
+sum(variants.df$ID != rownames(genotypes.mx))
+
+```
+
+# Save results
+
+```{r}
+
+save.image(file.path(data_folder,"s02_crude_counts_bc8.RData"))
+
+```
+
+# Final section
+
+```{r}
+
+sessionInfo()
+Sys.time()
+gc()
+
+```

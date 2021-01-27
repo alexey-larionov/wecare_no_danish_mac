@@ -1,0 +1,8 @@
+P1_F01, P1_F10, P1_H01, P2_E02, P3_G09, P4_E06
+samples have missingness < 0.9, so they may be removed as was done in some papers (ADD REFS)
+
+P5_C12	or P1_D05
+have kinship coefficient ~0.0444, which is marginally higher than 0.0442 threshold, recommended in some papers (ADD REFS).  In other words, they may be a 3-rd degree relatives (whatever it is).  Some other papers used 0.0884 threshold (ADD REFS)
+
+P5_E09, then P6_D05 could be removed as eigenvector outliers
+as well as P1_C12 P1_D08 P5_E02
