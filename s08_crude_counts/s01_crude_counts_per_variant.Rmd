@@ -1,7 +1,7 @@
 ---
 title: "WES: crude counts per variant"
 author: "Alexey Larionov"
-date: "11 January 2021"
+date: "27 January 2021"
 output:
   html_document:
     toc: true
@@ -50,20 +50,15 @@ graphics.off()
 options(stringsAsFactors = F)
 
 # Working folders
-
-#base_folder <- "/rds/project/erf33/rds-erf33-medgen" # hpc
-#project_folder=file.path(base_folder,"users/alexey/wecare/reanalysis_wo_danish_2020") # hpc
-base_folder <- "/Users/alexey/Documents" # mac
-project_folder <- file.path(base_folder,"wecare","final_analysis_2020","reanalysis_wo_danish_2020") # mac
-
-scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
 setwd(scripts_folder)
-
-data_folder <- file.path(project_folder,"data","s07_crude_counts")
+data_folder <- file.path(project_folder,"data","s08_crude_counts")
 # folder already exists and contains a tect file with BC8 genes
 
+# Libraries and functions
 library(dplyr)
-
 source(file.path(project_folder,"scripts","f00_functions","f01_qqunif_plot.R"))
 
 ```
@@ -72,13 +67,13 @@ source(file.path(project_folder,"scripts","f00_functions","f01_qqunif_plot.R"))
 
 ```{r}
 
-load(file.path(project_folder,"data","s06_filter","s04_filter_by_sample_call_rates.RData"))
+load(file.path(project_folder,"data","s07_relatedness_and_pca","s06_update_main_dataset.RData"))
 
-# update the folders
-base_folder <- "/Users/alexey/Documents" # mac
-project_folder <- file.path(base_folder,"wecare","final_analysis_2020","reanalysis_wo_danish_2020") # mac
-scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
-data_folder <- file.path(project_folder,"data","s07_crude_counts")
+# update folders
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
+data_folder <- file.path(project_folder,"data","s08_crude_counts")
 
 ```
 
@@ -201,8 +196,6 @@ for(var in 1:nrow(variants.df)){
   
 } # Next variant
 
-# Started ~20:15
-
 # Check result
 dim(variants_crude_counts.mx)
 head(variants_crude_counts.mx)
@@ -217,11 +210,11 @@ rm(var, cases, controls)
 ```{r}
 
 # Make data frame
-variants_crude_counts.df <- as.data.frame(variants_crude_counts.mx,
-                                          stringsAsFactors=F)
+variants_crude_counts.df <- as.data.frame(variants_crude_counts.mx)
+dim(variants_crude_counts.df)
 
-# Update numeric fields
-str(variants_crude_counts.df)
+# Update field types
+variants_crude_counts.df$id <- as.character(variants_crude_counts.df$id)
 
 variants_crude_counts.df$total_ac <- as.integer(variants_crude_counts.df$total_ac)
 variants_crude_counts.df$total_an <- as.integer(variants_crude_counts.df$total_an)
@@ -235,6 +228,8 @@ variants_crude_counts.df$cases_ac <- as.integer(variants_crude_counts.df$cases_a
 variants_crude_counts.df$cases_an <- as.integer(variants_crude_counts.df$cases_an)
 variants_crude_counts.df$cases_af <- as.numeric(variants_crude_counts.df$cases_af)
 
+variants_crude_counts.df$excess_group <- as.character(variants_crude_counts.df$excess_group)
+
 variants_crude_counts.df$crude_fisher_p <- as.numeric(variants_crude_counts.df$crude_fisher_p)
 variants_crude_counts.df$crude_counts_or <- as.numeric(variants_crude_counts.df$crude_counts_or)
 variants_crude_counts.df$or_lo_ci <- as.numeric(variants_crude_counts.df$or_lo_ci)
@@ -242,7 +237,9 @@ variants_crude_counts.df$or_hi_ci <- as.numeric(variants_crude_counts.df$or_hi_c
 
 str(variants_crude_counts.df)
 
-# Clean-up
+rownames(variants_crude_counts.df) <- variants_crude_counts.df$id
+
+# Clean-upy
 rm(variants_crude_counts.mx)
 
 ```

@@ -1,7 +1,7 @@
 ---
 title: "WES: BC8 crude counts"
 author: "Alexey Larionov"
-date: "12 January 2021"
+date: "27 January 2021"
 output:
   html_document:
     toc: true
@@ -29,7 +29,7 @@ pre code{
 </style>
 
 ```{r echo=F}
-options(width=999)
+#options(width=999)
 ```
 
 # Start section
@@ -50,18 +50,17 @@ graphics.off()
 options(stringsAsFactors = F)
 
 # Working folders
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
 
-#base_folder <- "/rds/project/erf33/rds-erf33-medgen" # hpc
-#project_folder=file.path(base_folder,"users/alexey/wecare/reanalysis_wo_danish_2020") # hpc
-base_folder <- "/Users/alexey/Documents" # mac
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021") # mac
-
-scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
+scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
 setwd(scripts_folder)
 
-data_folder <- file.path(project_folder,"data","s07_crude_counts")
+data_folder <- file.path(project_folder,"data","s08_crude_counts")
 
+# Libraries
 library(dplyr)
+library(ggVennDiagram)
 
 ```
 
@@ -71,9 +70,11 @@ library(dplyr)
 
 load(file.path(data_folder,"s01_crude_counts_per_variant.RData"))
 
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021") # mac
-scripts_folder <- file.path(project_folder,"scripts","s07_crude_counts")
-data_folder <- file.path(project_folder,"data","s07_crude_counts")
+# Update working folders
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
+data_folder <- file.path(project_folder,"data","s08_crude_counts")
 
 bc8_genes <- scan(file.path(data_folder,"bc8_genes.txt"),what="character")
 
@@ -101,15 +102,27 @@ bc8_genes
 
 # Select variants 
 
+## Keep only variants in the selected genes
+
 ```{r}
 
-# Keep only variants in the selected genes
 bc8_variants.df <- variants.df[variants.df$vep_SYMBOL %in% bc8_genes,]
 dim(bc8_variants.df)
 
-# Select LoF-s as defined by VEP IMPACT
+```
+
+## LoF-s as defined by VEP IMPACT
+
+```{r}
+
 lof <- bc8_variants.df$vep_IMPACT == "HIGH"
 sum(lof)
+
+```
+
+## Select known (likely) pathogenic by ClinVar
+
+```{r}
 
 # Explore ClinVar annotations
 bc8_variants.df %>% 
@@ -118,11 +131,12 @@ bc8_variants.df %>%
   arrange(desc(counts))
 
 # Select pathogenic variants
-likely_pathogenic <- 
+pathogenic <- 
   grepl("Pathogenic",bc8_variants.df$CLNSIG) | 
-  grepl("Likely_pathogenic",bc8_variants.df$CLNSIG) |
-  grepl("risk_factor",bc8_variants.df$CLNSIG)
-sum(likely_pathogenic)
+  grepl("Likely_pathogenic",bc8_variants.df$CLNSIG)
+sum(pathogenic)
+
+#grepl("risk_factor",bc8_variants.df$CLNSIG)
 
 #bc8_variants.df %>% 
 #  group_by(CLNREVSTAT) %>% 
@@ -134,13 +148,51 @@ sum(likely_pathogenic)
 #  variants.df$CLNREVSTAT == "criteria_provided,_multiple_submitters,_no_conflicts" |
 #  variants.df$CLNREVSTAT == "criteria_provided,_single_submitter""
 #etc
-  
-# Rare variants
-rare <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.05
-sum(rare)
+
+```
+
+## Rare variants
+
+```{r}
+
+# Rare in gnomeD NFE
+sum(bc8_variants.df$vep_gnomAD_NFE_AF <= 0.01, na.rm=T)
+sum(is.na(bc8_variants.df$vep_gnomAD_NFE_AF))
+
+rare_in_gnomAD_NFE <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.01 | 
+  is.na(bc8_variants.df$vep_gnomAD_NFE_AF)
+sum(rare_in_gnomAD_NFE)
+
+# Rare in dataset
+rare_in_wecare <- bc8_variants.df$total_af <= 0.01
+sum(rare_in_wecare)
+
+# Rare in controls
+#rare_in_controls <- bc8_variants.df$controls_ac <= 0.05
+#sum(rare_in_controls)
+
+sets.ls <- list(gnomAD_NFE=bc8_variants.df$ID[rare_in_gnomAD_NFE],
+            wecare=bc8_variants.df$ID[rare_in_wecare])
+
+ggVennDiagram(sets.ls)
+
+#rare <- rare_in_gnomAD_NFE | rare_in_wecare
+#rare <- rare_in_gnomAD_NFE & rare_in_wecare
+rare <- rare_in_gnomAD_NFE
+#rare <- rare_in_controls
 
 #uncommon <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.05
 #sum(uncommon)
+
+rm(rare_in_gnomAD_NFE, rare_in_wecare, sets.ls)
+
+```
+
+## Known benign or conflicting_interpretations
+
+known_benign not needed because of conflicting would include them
+
+```{r}
 
 # Known benign
 #known_benign <- 
@@ -148,12 +200,23 @@ sum(rare)
 #  grepl("Likely_benign",bc8_variants.df$CLNSIG)
 #sum(known_benign)
 
+conflicting_interpretations <- 
+  grepl("Conflicting_interpretations",bc8_variants.df$CLNSIG)
+
+sum(conflicting_interpretations)
+
+```
+
+## Combined functionaly important
+
+```{r}
 # Functionally important variants
-fiv <- (lof | likely_pathogenic) & rare
+fiv <- (lof | pathogenic) & rare & !conflicting_interpretations
 sum(fiv)
 
 bc8_fiv.df <- bc8_variants.df[fiv,] %>% 
-  select(ID,vep_SYMBOL,vep_Consequence,vep_IMPACT,CLNSIG,vep_gnomAD_NFE_AF,
+  select(ID,vep_SYMBOL,vep_Consequence,vep_IMPACT,CLNSIG,CLNREVSTAT,
+         vep_EXON,vep_gnomAD_NFE_AF,
          total_ac,total_an,total_af,
          controls_ac,controls_an,controls_af,
          cases_ac,cases_an,cases_af)
@@ -161,7 +224,7 @@ bc8_fiv.df
 # View(bc8_fiv.df)
 
 # Clean-up
-rm(lof,likely_pathogenic,rare,fiv)
+rm(lof,pathogenic,rare,fiv,conflicting_interpretations)
 
 ```
 
@@ -170,18 +233,13 @@ rm(lof,likely_pathogenic,rare,fiv)
 ```{r}
 
 # Calculate crude counts
-controls_ac <- sum(bc8_fiv.df$controls_ac)
+controls_ac <- sum(bc8_fiv.df$controls_ac) 
 controls_an <- sum(bc8_fiv.df$controls_an)
 controls_af <- controls_ac / controls_an
 
 cases_ac <- sum(bc8_fiv.df$cases_ac)
 cases_an <- sum(bc8_fiv.df$cases_an)
 cases_af <- cases_ac / cases_an
-
-afs <- c(controls_af,cases_af)
-names(afs) <- c("Controls","Cases")
-mp <- barplot(afs, ylim=c(0,0.0055), main="WECARE WES w/o Danish: 172 controls vs 163 cases\nCrude counts Fisher p=0.059", ylab="Mean AF in selected variants")
-text(mp,afs+0.0003,round(afs,4))
 
 # Calculate Fisher test
 fisher_matrix <- matrix(c(cases_ac, cases_an - cases_ac,
@@ -192,12 +250,39 @@ colnames(fisher_matrix) <- c("Alt","Ref")
 rownames(fisher_matrix) <- c("Cases","Controls")
 fisher_matrix 
 
-fisher.test(fisher_matrix, conf.int=T)
+ft <- fisher.test(fisher_matrix, conf.int=T)
+
+ft
+
+afs <- c(controls_af,cases_af)
+names(afs) <- c("Controls","Cases")
+
+cc <- table(phenotypes.df$cc)
+
+mp <- barplot(afs, ylim=c(0,max(afs)+0.0005), 
+main=paste("WECARE WES w/o Danish\n",cc[1],"controls vs ",cc[2]," cases\nCrude counts Fisher p=",round(ft$p.value,3)), ylab="Mean AF in selected variants")
+
+text(mp,afs+0.0003,round(afs,4))
 
 # Clean-up
 rm(controls_ac, controls_an, controls_af,
    cases_ac, cases_an, cases_af,
-   afs, mp, fisher_matrix)
+   afs, mp, fisher_matrix,cc,ft)
+
+```
+
+# Carriers of the selected variants
+
+```{r}
+
+genotypes_bc8.mx <- genotypes.mx[bc8_fiv.df$ID,]
+dim(genotypes_bc8.mx)
+
+carriers.udf <- function(x){paste(names(x)[which(x>0)], collapse=",")}
+x <- apply(genotypes_bc8.mx,1,carriers.udf)
+x
+
+rm(x)
 
 ```
 

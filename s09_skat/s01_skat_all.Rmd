@@ -1,0 +1,232 @@
+---
+title: "SKAT: WECARE w/o Danish samples, for all variants including consensus high-grade missenses"
+author: "AL"
+date: "29/01/2021"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Summary
+
+SKAT for functionaly important variants in bc8 group of genes (including consensus high-grade missenses)  
+
+<style>
+pre{
+  overflow-x: auto;
+}
+pre code{
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+```{r echo=F}
+options(width=999)
+```
+
+# Start section
+
+```{r}
+
+# Time
+Sys.time()
+
+# Memory
+gc()
+
+# Clean up
+rm(list=ls())
+graphics.off()
+
+# Options
+options(stringsAsFactors = F)
+
+# Working folders
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+scripts_folder <- file.path(project_folder,"scripts","s09_skat")
+setwd(scripts_folder)
+
+data_folder <- file.path(project_folder,"data","s09_skat")
+#dir.create(data_folder)
+
+# Libraries
+library(SKAT)
+library(dplyr)
+
+```
+
+# Load data
+
+```{r}
+
+load(file.path(project_folder,"data","s08_crude_counts","s02_crude_counts_bc8_all.RData"))
+
+# Update folders
+base_folder <- "/Users/alexey/Documents"
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+scripts_folder <- file.path(project_folder,"scripts","s09_skat")
+data_folder <- file.path(project_folder,"data","s09_skat")
+
+```
+
+# check_data
+
+```{r check_data}
+
+ls()
+
+dim(genotypes.mx)
+dim(phenotypes.df)
+dim(variants.df)
+
+# Check consistency of rownames and colnames
+sum(colnames(genotypes.mx) != phenotypes.df$sample.ID)
+sum(rownames(genotypes.mx) != variants.df$ID)
+
+dim(bc8_variants.df)
+dim(bc8_fiv_all.df)
+
+```
+
+# prepare_data_for_analysis
+
+No missed data in outcomes, covariates or eigenvectors.  
+
+Missed genotypes are imputed by SKAT as average AF  
+(default impute.method="fixed" uses mean genotype values).  
+
+```{r prepare_data_for_analysis}
+
+# Outcomes
+Y <- phenotypes.df$cc
+sum(is.na(Y)) # 0
+
+# Genotypes: select variants and transpose
+G <- t(genotypes.mx[bc8_fiv_all.df$ID,])
+
+# Do NOT impute missed genotypes (they are handled by SKAT)
+sum(is.na(G))/(ncol(G)*nrow(G)) # <1%
+
+# Eigenvectors
+E <- as.matrix(phenotypes.df[,c("pc1","pc2")])
+sum(is.na(E)) # 0
+
+# "Matching" covariates 
+
+# Originally, the cases and controls were matched by Age at diagnosis and 
+# time to event / lack of event ("age_dx", "rstime"). 
+# Hence the "M" abbreviation (called SKAT-M in preliminary analyses). 
+
+# At the same time, SKAT does not allow using this matching information.  
+# Also, some samples failed sequencing, thus breaking the pairs. 
+# Overall, the compared groups are very well balanced by "age_dx", "rstime". 
+# Still, we desided to use these covariates to account for differences at 
+# individual level.  
+
+# By including these we assume linear effect of these confaunders.  
+# This is fully supported by the previous biological knowledge. 
+
+M <- as.matrix(phenotypes.df[,c("age_dx", "rstime")])
+sum(is.na(M)) # 0
+
+# Treatment: ether endo or chemo or both 
+# Assuming that 0 for Hormone means no treatment
+# There is one case with missed information on hormonal treatment 
+# However, it has chemo, so the overall trearment has no missed data 
+hormone <- phenotypes.df$hormone
+sum(is.na(hormone))
+table(hormone)
+
+table(phenotypes.df$chemo_cat)
+chemo <- phenotypes.df$chemo_cat != "no"
+sum(is.na(chemo))
+table(chemo)
+
+treatment <- as.integer(chemo | hormone)
+sum(is.na(treatment)) # 0
+table(treatment)
+
+# Number of pregnancies: coded as 0,1,2
+table(phenotypes.df$num_preg)
+num_preg <- as.integer(phenotypes.df$num_preg)
+sum(is.na(num_preg)) # 0
+table(num_preg)
+
+# Lobular pathology - excluded because of a missed value?
+# Also: has a known genetic association (CDH1)
+#lobular <- phenotypes.df$hist_cat == "lobular"
+#sum(is.na(lobular)) # 1
+
+# Combined "Clinical" covariates
+C <- cbind(treatment, num_preg)
+sum(is.na(C)) # 0
+
+# Clean-up
+rm(chemo, hormone, treatment, num_preg) # lobular
+
+```
+
+# SKAT
+
+```{r SKAT, warning=FALSE}
+
+# Calculate SKAT null model (the same for all genes and all tests)
+skat_null <- SKAT_Null_Model(Y ~ C + E + M, out_type="D", n.Resampling = 10000)
+# D for the dichotomous outcome
+
+# Calculate burden test with default weights beta[1,25]
+burden_test <- SKATBinary(G, skat_null, method="Burden", method.bin = "ER")
+burden_test$p.value
+#burden_test
+
+# Calculate SKAT variance-based test with default weights beta[1,25]
+skat_test <- SKATBinary(G, skat_null, method="SKAT", method.bin = "ER")
+skat_test$p.value
+#skat_test
+
+# Clean-up
+rm(Y, G, E, C, M, skat_null)
+
+```
+
+# data_summary
+
+```{r data_summary}
+
+ls()
+
+dim(genotypes.mx)
+dim(phenotypes.df)
+dim(variants.df)
+
+# Check consistency of rownames and colnames
+sum(colnames(genotypes.mx) != phenotypes.df$sample.ID)
+sum(rownames(genotypes.mx) != variants.df$ID)
+
+dim(bc8_variants.df)
+dim(bc8_fiv_all.df)
+
+```
+
+# save_results
+
+```{r save_results}
+
+save.image(file.path(data_folder,"s01_skat_all.RData"))
+
+```
+
+# final_section
+
+```{r final_section}
+
+ls()
+sessionInfo()
+Sys.time()
+
+```

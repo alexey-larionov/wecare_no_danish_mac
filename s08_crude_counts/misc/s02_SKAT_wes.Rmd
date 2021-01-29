@@ -1,0 +1,502 @@
+---
+title: "SKAT_wes_cbc_vs_ubc: 8 genes"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+started: Alexey Larionov, 27Mar2017  
+last updated: Alexey Larionov, 25Nov2019  
+
+# Summary
+
+Significant association with aggregated variants in BC genes in SKAT Burden  
+
+AFs and ORs were calculated from crude (inverted) counts  
+
+SKAT cbc vs ubc model included:  
+
+- therapy (cytotoxic or hormonal)  
+- number of pregnancies  
+- matching information (age, time to event)  
+- 2 top eigenvectors  
+
+Efficient Resampling (ER) is used because this is the most accurate method for  
+p-assessment from small counts in SKAT package (Lee et al Biostatistics 2016).  
+
+Default SKAT weighting: beta[1,25]  
+
+Input & output data: 16,824 vars x 478 cases (245 UBC and 233 CBC)  
+
+# start_section
+
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+```{r set_width, echo=F}
+
+#eval=F
+
+options(width = 999)
+# https://stackoverflow.com/questions/36845178/width-of-r-code-chunk-output-in-rmarkdown-files-knitr-ed-to-html
+
+```
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clenan-up
+rm(list=ls())
+graphics.off()
+
+# Base folder
+library(knitr)
+base_folder="/Users/alexey/Documents/wecare/pathways"
+opts_knit$set(root.dir = base_folder)
+#setwd(base_folder)
+
+# Other folders
+data_folder <- paste(base_folder,"s00_source_data",sep="/")
+pathway_folder <- paste(base_folder,"s02_bc_8/bc_8_LoF",sep="/")
+
+# Libraries
+library(SKAT)
+
+# Suppress scientific notation for numbers
+options(scipen=999)
+
+```
+
+# load_data
+
+```{r load_data}
+
+load(paste(data_folder, "r13_add_crude_aggr_counts_wecare_only.RData", sep="/"))
+base_folder="/Users/alexey/Documents/wecare/pathways"
+
+pathway_genes <- scan(paste(pathway_folder,"s01_pathway_genes_8.txt",sep="/"), 
+                      what="character")
+
+```
+
+# check_data
+
+```{r check_data}
+
+ls()
+
+dim(genes_aggr_skat.df)
+dim(genes_inv_aggr_crude_counts.df)
+sum(rownames(genes_aggr_skat.df) != rownames(genes_inv_aggr_crude_counts.df))
+
+dim(genotypes.mx)
+dim(kgen.df)
+dim(exac.df)
+dim(variants.df)
+dim(phenotypes.df)
+
+# Check consistency of rownames and colnames
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+sum(rownames(genotypes.mx) != rownames(kgen.df))
+sum(rownames(genotypes.mx) != rownames(exac.df))
+sum(rownames(genotypes.mx) != rownames(variants.df))
+
+# Pathway gene names
+pathway_genes
+
+```
+
+```{r}
+
+tp51_1 <- genotypes.mx["Var000270638",]
+sum(tp51_1)
+which(tp51_1 == 1)
+
+tp51_2 <- genotypes.mx["Var000270647",]
+sum(tp51_2, na.rm=T)
+which(tp51_2 == 1)
+
+phenotypes.df["P5_H07","gwas_id"]
+phenotypes.df["P1_A06","gwas_id"]
+
+```
+
+# Select variants
+
+### Select all (protein-affecting) variants in the pathway
+
+```{r all_pa_variants}
+
+# Check genes
+present <- pathway_genes %in% variants.df$SYMBOL
+sum(present)
+pathway_genes[present]
+
+sum(!present)
+pathway_genes[!present]
+
+# Index of pathway variants
+all_var <- as.vector(variants.df$SYMBOL) %in% pathway_genes
+sum(all_var)
+
+# Pathway variants annotations
+all_var.df <- variants.df[all_var,]
+dim(all_var.df)
+
+colnames(all_var.df)
+sum(all_var.df$Multiallelic)
+sum(all_var.df$inverted)
+
+# Strictly speaking, inverted counts should be used here, but there is no inverted variants
+selected_annotations <- c("CHROM","POS","REF","ALT","SYMBOL","Consequence","SIFT_call","PolyPhen_call",
+                          "CLIN_SIG","ac_ubc","an_ubc","af_ubc","ac_cbc","an_cbc","af_cbc")
+
+#all_var.df[,selected_annotations]
+#View(all_var.df[,selected_annotations])
+
+# Genotypes of the pathway variants (transpose for SKAT !)
+all_gt.mx <- t(genotypes.mx[all_var,])
+dim(all_gt.mx)
+
+sum(all_gt.mx, na.rm=T) # Raw MAC
+sum(is.na(all_gt.mx))/(ncol(all_gt.mx)*nrow(all_gt.mx)) # Can be handled by SKAT
+
+# Clean-up
+rm(all_var)
+
+```
+
+### Select **LOF** variants
+
+https://www.ensembl.org/info/genome/variation/prediction/predicted_data.html 
+
+```{r lof}
+
+# Select variants
+stop_gain <- grepl("stop_gained", all_var.df$Consequence)
+sum(stop_gain)
+
+frameshift <- grepl("frameshift_variant", all_var.df$Consequence)
+sum(frameshift)
+
+splice_acceptor <- grepl("splice_acceptor_variant", all_var.df$Consequence)
+sum(splice_acceptor)
+
+splice_donor <- grepl("splice_donor_variant", all_var.df$Consequence)
+sum(splice_donor)
+
+stop_loss <- grepl("stop_lost", all_var.df$Consequence)
+sum(stop_loss)
+
+start_loss <- grepl("start_lost", all_var.df$Consequence)
+sum(start_loss)
+
+# Combine LoF variants
+lof <- stop_gain | frameshift | splice_acceptor | splice_donor | stop_loss | start_loss
+sum(lof)
+
+# Exclude predicted LoF variants that have been annotated as benign in clinsig (just in case)
+lof <- lof & !grepl("benign", all_var.df$CLIN_SIG)
+sum(lof)
+
+# View variants
+#View(all_var.df[lof,selected_annotations])
+
+# Clean-up
+rm(stop_gain, frameshift, splice_acceptor, splice_donor, stop_loss, start_loss)
+
+```
+
+### Select ClinSig variants
+
+https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/
+
+```{r clinvar}
+
+# Select variants 
+pathogenic <- grepl("pathogenic", all_var.df$CLIN_SIG)
+sum(pathogenic)
+
+risk <- grepl("risk_factor", all_var.df$CLIN_SIG)
+sum(risk)
+
+# Combine variants
+clinsig <- pathogenic | risk
+sum(clinsig)
+
+# Exclude inconsistently annotated variants (just in case)
+clinsig <- clinsig & !grepl("benign", all_var.df$CLIN_SIG)
+sum(clinsig)
+
+# View variants
+# View(all_var.df[clinsig,selected_annotations])
+
+# Clean-up
+rm(pathogenic, risk)
+
+```
+
+### Combine LOF and Clinsig
+
+```{r}
+
+# Select
+lof_clinsig <- lof | clinsig
+sum(lof_clinsig)
+lof_clinsig_var.df <- all_var.df[lof_clinsig,]
+colnames(lof_clinsig_var.df)
+
+# View
+lof_clinsig_var.df[,selected_annotations]
+#View(lof_clinsig_var.df[,selected_annotations])
+
+# Genotypes (already transposed)
+lof_clinsig_gt.mx <- all_gt.mx[,lof_clinsig]
+dim(lof_clinsig_gt.mx)
+
+sum(lof_clinsig_gt.mx, na.rm=T) # Raw MAC
+sum(is.na(lof_clinsig_gt.mx))/(ncol(lof_clinsig_gt.mx)*nrow(lof_clinsig_gt.mx)) # Can be handled by SKAT
+
+# Clean-up
+rm(lof, clinsig, lof_clinsig, selected_annotations, all_gt.mx, all_var.df)
+
+```
+
+# Crude counts and OR-s
+
+Use inverted counts just in case, despite the absence of inverted variants  
+
+### summary table
+
+```{r start_summary}
+
+# Prepare empty data frame
+bc8_summary.mx <- matrix(ncol=11,nrow=0)
+colnames(bc8_summary.mx) <- c("genes","n_var","mac",
+                   "ac_ubc","an_ubc","af_ubc",
+                   "ac_cbc","an_cbc","af_cbc",
+                   "or","log_or")
+
+# Get aggregated counts and AFs (later to be done for each gene separately)
+n_vars <- nrow(lof_clinsig_var.df)
+mac <- sum(lof_clinsig_gt.mx,na.rm = T)
+
+ac_cbc <- sum(lof_clinsig_var.df$ac_cbc_inv)
+an_cbc <- sum(lof_clinsig_var.df$an_cbc_inv)
+af_cbc <- ac_cbc / an_cbc
+
+ac_ubc <- sum(lof_clinsig_var.df$ac_ubc_inv)
+an_ubc <- sum(lof_clinsig_var.df$an_ubc_inv)
+af_ubc <- ac_ubc / an_ubc
+
+odds_cbc <- ac_cbc / (an_cbc - ac_cbc)
+odds_ubc <- ac_ubc / (an_ubc - ac_ubc)
+or <- odds_cbc / odds_ubc
+log_or <- log(or)
+
+wes_skat <- c("wes_skat",n_vars,mac,
+                 ac_ubc,an_ubc,af_ubc,
+                 ac_cbc,an_cbc,af_cbc,
+                 or,log_or)
+
+# Add to summary matrix
+bc8_summary.mx <- rbind(bc8_summary.mx, wes_skat)
+
+# Clean-up (could be done in the TBD loop per gene)
+rm(n_vars,mac,
+   ac_ubc,an_ubc,af_ubc,
+   ac_cbc,an_cbc,af_cbc,
+   odds_cbc,odds_ubc,
+   or,log_or,
+   wes_skat)
+
+# Convert matrix to data frame
+bc8_summary.df <- as.data.frame(bc8_summary.mx)
+
+# Update data types
+str(bc8_summary.df)
+bc8_summary.df$genes <- as.vector(bc8_summary.df$genes)
+bc8_summary.df$n_var <- as.integer(as.vector(bc8_summary.df$n_var))
+bc8_summary.df$mac <- as.integer(as.vector(bc8_summary.df$mac))
+bc8_summary.df$ac_ubc <- as.integer(as.vector(bc8_summary.df$ac_ubc))
+bc8_summary.df$an_ubc <- as.integer(as.vector(bc8_summary.df$an_ubc))
+bc8_summary.df$af_ubc <- as.double(as.vector(bc8_summary.df$af_ubc))
+bc8_summary.df$ac_cbc <- as.integer(as.vector(bc8_summary.df$ac_cbc))
+bc8_summary.df$an_cbc <- as.integer(as.vector(bc8_summary.df$an_cbc))
+bc8_summary.df$af_cbc <- as.double(as.vector(bc8_summary.df$af_cbc))
+bc8_summary.df$or <- as.double(as.vector(bc8_summary.df$or))
+bc8_summary.df$log_or <- as.double(as.vector(bc8_summary.df$log_or))
+str(bc8_summary.df)
+
+# clean-up
+rm(bc8_summary.mx)
+
+```
+
+# Make barplot(s) for crude counts
+
+```{r barplot}
+
+# Prepare data and labels
+bp_data <- c(bc8_summary.df$af_ubc,bc8_summary.df$af_cbc)
+bp_labels <- c(paste(round(bc8_summary.df$af_ubc,4),"\n",
+                     bc8_summary.df$ac_ubc," / ",bc8_summary.df$an_ubc,sep=""),
+               paste(round(bc8_summary.df$af_cbc,4),"\n",
+                     bc8_summary.df$ac_cbc," / ",bc8_summary.df$an_cbc,sep=""))
+
+# Draw plot
+bp <- barplot(bp_data, 
+        names.arg = c("UBC","CBC"),
+        ylim=c(0,3e-3),
+        ylab="Aggregated AF", 
+        main="Aggregated AFs in 8 BC risk genes\nlof variants, WES datset")
+text(x=bp, y=bp_data, labels=bp_labels, pos=3)
+
+# Clean-up
+rm(bp, bp_data, bp_labels)
+
+```
+
+# SKAT
+
+#### Prepare outcome and covariates  
+
+There should be no missed data in outcomes, covariates or eigenvectors  
+A small proportion of missed genotypes are OK (imputed by SKAT as mean AF)  
+
+```{r prepare_data_for_analysis}
+
+# Check that genotypes are in sync with phenotypes (just a common sence check)
+sum(rownames(lof_clinsig_gt.mx) != rownames(phenotypes.df))
+
+# Outcomes 
+Y <- phenotypes.df$cc
+table(Y)
+sum(is.na(Y)) # 0
+
+# Eigenvectors
+E <- as.matrix(phenotypes.df[,c("eig1","eig2")])
+sum(is.na(E)) # 0
+
+# "Matching" covariates 
+M <- as.matrix(phenotypes.df[,c("age_dx", "rstime")])
+sum(is.na(M)) # 0
+
+# Treatment: ether endo or chemo or both 
+hormone <- phenotypes.df$hormone
+chemo <- phenotypes.df$chemo_cat != "no"
+treatment <- as.integer(chemo | hormone)
+sum(is.na(treatment)) # 0
+
+# Number of pregnancies (coded as 0,1,2)
+num_preg <- as.integer(phenotypes.df$num_preg)
+table(num_preg)
+sum(is.na(num_preg)) # 0
+
+# Lobular pathology - excluded because of a missed value?
+# Also: has a known genetic association (CDH1)
+#lobular <- phenotypes.df$hist_cat == "lobular"
+#sum(is.na(lobular)) # 1
+
+# Combined "Clinical" covariates
+C <- cbind(treatment, num_preg)
+sum(is.na(C)) # 0
+
+# Clean-up
+rm(chemo, hormone, treatment, num_preg) # lobular
+
+```
+
+### Null model
+
+```{r SKAT_null}
+
+skat_null <- SKAT_Null_Model(Y ~ C + E + M, out_type="D") # D for the dichotomous outcome
+
+rm(Y,C,E,M)
+
+```
+
+### SKAT burden test
+
+```{r SKAT_lof}
+
+# Test
+burden_lof <- SKATBinary(lof_clinsig_gt.mx, skat_null, method="Burden", method.bin = "ER")
+burden_lof$p.value
+burden_lof$MAC
+burden_lof$is.accurate
+burden_lof$param$n.marker.test
+
+# Add results to the summary table
+bc8_summary.df <- cbind(bc8_summary.df,
+                        burden_p=burden_lof$p.value,
+                        burden_mac=burden_lof$MAC,
+                        burden_accurate=burden_lof$is.accurate,
+                        burden_n_var=burden_lof$param$n.marker.test)
+
+bc8_summary.df
+
+# Clean-up
+rm(skat_null, burden_lof, lof_clinsig_gt.mx)
+
+```
+
+# data_summary
+
+```{r data_summary}
+
+ls()
+
+dim(genes_aggr_skat.df)
+dim(genes_inv_aggr_crude_counts.df)
+sum(rownames(genes_aggr_skat.df) != rownames(genes_inv_aggr_crude_counts.df))
+
+dim(genotypes.mx)
+dim(kgen.df)
+dim(exac.df)
+dim(variants.df)
+dim(phenotypes.df)
+
+# Check consistency of rownames and colnames
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+sum(rownames(genotypes.mx) != rownames(kgen.df))
+sum(rownames(genotypes.mx) != rownames(exac.df))
+sum(rownames(genotypes.mx) != rownames(variants.df))
+
+pathway_genes
+
+```
+
+# save_results
+
+```{r save_results}
+
+write.table(lof_clinsig_var.df,
+            file=paste(pathway_folder,"s02_SKAT_wes.txt",sep="/"),
+            quote=F, sep="\t", row.names=F, col.names=T)
+
+save.image(paste(pathway_folder, "s02_SKAT_wes.RData", sep="/"))
+
+```
+
+# final_section
+
+```{r final_section}
+
+ls()
+sessionInfo()
+Sys.time()
+
+```
