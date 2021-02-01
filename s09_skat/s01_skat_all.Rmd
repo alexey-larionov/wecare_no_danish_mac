@@ -1,7 +1,7 @@
 ---
 title: "SKAT: WECARE w/o Danish samples, for all variants including consensus high-grade missenses"
 author: "AL"
-date: "29/01/2021"
+date: "01 Feb 2021"
 output: 
   html_document:
     toc: true
@@ -47,10 +47,9 @@ options(stringsAsFactors = F)
 
 # Working folders
 base_folder <- "/Users/alexey/Documents"
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021","s01_wes_wecare_only")
 scripts_folder <- file.path(project_folder,"scripts","s09_skat")
 setwd(scripts_folder)
-
 data_folder <- file.path(project_folder,"data","s09_skat")
 #dir.create(data_folder)
 
@@ -68,7 +67,7 @@ load(file.path(project_folder,"data","s08_crude_counts","s02_crude_counts_bc8_al
 
 # Update folders
 base_folder <- "/Users/alexey/Documents"
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021","s01_wes_wecare_only")
 scripts_folder <- file.path(project_folder,"scripts","s09_skat")
 data_folder <- file.path(project_folder,"data","s09_skat")
 

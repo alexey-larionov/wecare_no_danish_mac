@@ -11,6 +11,7 @@
 
 <meta name="author" content="AL" />
 
+<meta name="date" content="2021-02-01" />
 
 <title>SKAT: WECARE w/o Danish samples, for all variants including consensus high-grade missenses</title>
 
@@ -255,7 +256,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">SKAT: WECARE w/o Danish samples, for all variants including consensus high-grade missenses</h1>
 <h4 class="author">AL</h4>
-<h4 class="date">29/01/2021</h4>
+<h4 class="date">01 Feb 2021</h4>
 
 </div>
 
@@ -277,12 +278,12 @@ pre code{
 <h1>Start section</h1>
 <pre class="r"><code># Time
 Sys.time()</code></pre>
-<pre><code>## [1] &quot;2021-01-29 20:21:21 GMT&quot;</code></pre>
+<pre><code>## [1] &quot;2021-02-01 11:25:06 GMT&quot;</code></pre>
 <pre class="r"><code># Memory
 gc()</code></pre>
 <pre><code>##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-## Ncells 411605 22.0     855255 45.7         NA   641517 34.3
-## Vcells 787400  6.1    8388608 64.0      16384  1768563 13.5</code></pre>
+## Ncells 411609 22.0     855245 45.7         NA   641560 34.3
+## Vcells 787422  6.1    8388608 64.0      16384  1768508 13.5</code></pre>
 <pre class="r"><code># Clean up
 rm(list=ls())
 graphics.off()
@@ -292,10 +293,9 @@ options(stringsAsFactors = F)
 
 # Working folders
 base_folder &lt;- &quot;/Users/alexey/Documents&quot;
-project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;)
+project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;,&quot;s01_wes_wecare_only&quot;)
 scripts_folder &lt;- file.path(project_folder,&quot;scripts&quot;,&quot;s09_skat&quot;)
 setwd(scripts_folder)
-
 data_folder &lt;- file.path(project_folder,&quot;data&quot;,&quot;s09_skat&quot;)
 #dir.create(data_folder)
 
@@ -319,7 +319,7 @@ library(SKAT)</code></pre>
 
 # Update folders
 base_folder &lt;- &quot;/Users/alexey/Documents&quot;
-project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;)
+project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;,&quot;s01_wes_wecare_only&quot;)
 scripts_folder &lt;- file.path(project_folder,&quot;scripts&quot;,&quot;s09_skat&quot;)
 data_folder &lt;- file.path(project_folder,&quot;data&quot;,&quot;s09_skat&quot;)</code></pre>
 </div>
@@ -504,7 +504,7 @@ sum(colnames(genotypes.mx) != phenotypes.df$sample.ID)</code></pre>
 ## loaded via a namespace (and not attached):
 ##  [1] knitr_1.29       magrittr_1.5     tidyselect_1.1.0 lattice_0.20-41  R6_2.4.1         rlang_0.4.6      stringr_1.4.0    tools_3.6.2      grid_3.6.2       xfun_0.15        htmltools_0.5.0  ellipsis_0.3.1   yaml_2.2.1       digest_0.6.25    tibble_3.0.1     lifecycle_0.2.0  crayon_1.3.4     purrr_0.3.4      vctrs_0.3.1      glue_1.4.1       evaluate_0.14    rmarkdown_2.3    stringi_1.4.6    compiler_3.6.2   pillar_1.4.4     generics_0.0.2   pkgconfig_2.0.3</code></pre>
 <pre class="r"><code>Sys.time()</code></pre>
-<pre><code>## [1] &quot;2021-01-29 20:22:11 GMT&quot;</code></pre>
+<pre><code>## [1] &quot;2021-02-01 11:25:49 GMT&quot;</code></pre>
 </div>
 
 

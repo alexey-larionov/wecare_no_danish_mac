@@ -14,7 +14,7 @@ editor_options:
 
 PCA for wecare-only (b37) wes dataset w/o Danish:  
 
-- Detects the same outliers as the previous analyses: **P5_E09** and possibly **P6_D05**, P1_C12, P1_D08, P5_E02  
+- Suggests but not excludes some same outliers as the previous analyses: **P5_E09** and possibly **P6_D05**, P1_C12, P1_D08, P5_E02  
 - Shows no irregularities in PCA analysis  
 - Provides evidence for using top 2 PC-s in regression model  
 
@@ -23,10 +23,11 @@ PCA for wecare-only (b37) wes dataset w/o Danish:
 An e-mail was sent to bigsnpr package author:  
 
 - Why U-values (eigenvectors?) are numerically different from PC-s plotted by "scores" plot?  
-
 - How can I plot lines +/- 6xSD on my "scores" plot?  
+- I use eigenvectors in regression models to correct for population stratification; can I use U-values directly or should I scale it as you do in the "scores" plot?  
 
-- I use eigenvectors in regression models to correct for population stratification; can I use U-values directly or should I scale it as you do in the "scores" plot?
+The answer was qiock but poorly worded (intended to show off rather than to clarify):  
+https://github.com/privefl/bigstatsr/issues/128#issuecomment-768277757  
 
 **References**  
 

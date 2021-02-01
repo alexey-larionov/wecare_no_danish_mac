@@ -14,8 +14,8 @@ editor_options:
 
 - Add updated phenotype data frame that includes PC-s  
 - Sync genotypes with the updated phenotypes:  
-  + Removes related samples detected during PCA pre-processing (keeping one participant from each family, e.g. keep only P5_C12 from the **P5_C12 & P1_D05 pair**)  
-  + Removes outliers detected in PCA (**P6_D05** and **P5_E09**) from genotypes matrix  
+    + Removes related samples (if any) detected during PCA pre-processing  
+    + Removes outliers detected in PCA (if any) from genotypes matrix  
 - Remove non-polymorphic sites (if any) appeared after the samples filtering  
 
 <style>
@@ -29,7 +29,7 @@ pre code{
 </style>
 
 ```{r echo=F}
-#options(width=999)
+options(width=999)
 ```
 
 # Start section

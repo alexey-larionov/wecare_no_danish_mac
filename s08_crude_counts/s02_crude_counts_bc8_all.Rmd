@@ -1,7 +1,7 @@
 ---
 title: "WES: BC8 crude counts - all"
 author: "Alexey Larionov"
-date: "29 January 2021"
+date: "01 Feb 2021"
 output:
   html_document:
     toc: true
@@ -51,11 +51,9 @@ options(stringsAsFactors = F)
 
 # Working folders
 base_folder <- "/Users/alexey/Documents"
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
-
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021","s01_wes_wecare_only")
 scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
 setwd(scripts_folder)
-
 data_folder <- file.path(project_folder,"data","s08_crude_counts")
 
 # Libraries
@@ -72,7 +70,7 @@ load(file.path(data_folder,"s01_crude_counts_per_variant.RData"))
 
 # Update working folders
 base_folder <- "/Users/alexey/Documents"
-project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021")
+project_folder <- file.path(base_folder,"wecare","final_analysis_2021","reanalysis_wo_danish_2021","s01_wes_wecare_only")
 scripts_folder <- file.path(project_folder,"scripts","s08_crude_counts")
 data_folder <- file.path(project_folder,"data","s08_crude_counts")
 
@@ -132,7 +130,7 @@ bc8_variants.df %>%
 
 # Select known_pathogenic variants
 known_pathogenic <- 
-  grepl("known_pathogenic",bc8_variants.df$CLNSIG) | 
+  grepl("Pathogenic",bc8_variants.df$CLNSIG) | 
   grepl("Likely_pathogenic",bc8_variants.df$CLNSIG)
 sum(known_pathogenic)
 
@@ -201,6 +199,10 @@ sum(consensus_high_grade_missenses)
 
 # Rare in gnomeD NFE
 sum(bc8_variants.df$vep_gnomAD_NFE_AF <= 0.01, na.rm=T)
+
+min(bc8_variants.df$vep_gnomAD_NFE_AF, na.rm=T)
+max(bc8_variants.df$vep_gnomAD_NFE_AF, na.rm=T) # no rare variants with MAF<0.01 and AF>0.99
+
 sum(is.na(bc8_variants.df$vep_gnomAD_NFE_AF))
 
 rare_in_gnomAD_NFE <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.01 | 
@@ -208,6 +210,12 @@ rare_in_gnomAD_NFE <- bc8_variants.df$vep_gnomAD_NFE_AF <= 0.01 |
 sum(rare_in_gnomAD_NFE)
 
 # Rare in dataset
+sum(bc8_variants.df$total_af <= 0.01, na.rm=T)
+
+min(bc8_variants.df$total_af, na.rm=T)
+max(bc8_variants.df$total_af, na.rm=T) # no rare variants with MAF<0.01 and AF>0.99
+sum(is.na(bc8_variants.df$total_af))
+
 rare_in_wecare <- bc8_variants.df$total_af <= 0.01
 sum(rare_in_wecare)
 

@@ -11,7 +11,7 @@
 
 <meta name="author" content="Alexey Larionov" />
 
-<meta name="date" content="2021-01-29" />
+<meta name="date" content="2021-02-01" />
 
 <title>WES: BC8 crude counts - all</title>
 
@@ -256,7 +256,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">WES: BC8 crude counts - all</h1>
 <h4 class="author">Alexey Larionov</h4>
-<h4 class="date">29 January 2021</h4>
+<h4 class="date">01 Feb 2021</h4>
 
 </div>
 
@@ -284,12 +284,12 @@ pre code{
 <h1>Start section</h1>
 <pre class="r"><code># Time
 Sys.time()</code></pre>
-<pre><code>## [1] &quot;2021-01-29 20:05:42 GMT&quot;</code></pre>
+<pre><code>## [1] &quot;2021-02-01 11:23:51 GMT&quot;</code></pre>
 <pre class="r"><code># Memory
 gc()</code></pre>
 <pre><code>##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-## Ncells 411861 22.0     855988 45.8         NA   641514 34.3
-## Vcells 788579  6.1    8388608 64.0      16384  1768737 13.5</code></pre>
+## Ncells 411871 22.0     855994 45.8         NA   641560 34.3
+## Vcells 788688  6.1    8388608 64.0      16384  1768508 13.5</code></pre>
 <pre class="r"><code># Clean up
 rm(list=ls())
 graphics.off()
@@ -299,11 +299,9 @@ options(stringsAsFactors = F)
 
 # Working folders
 base_folder &lt;- &quot;/Users/alexey/Documents&quot;
-project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;)
-
+project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;,&quot;s01_wes_wecare_only&quot;)
 scripts_folder &lt;- file.path(project_folder,&quot;scripts&quot;,&quot;s08_crude_counts&quot;)
 setwd(scripts_folder)
-
 data_folder &lt;- file.path(project_folder,&quot;data&quot;,&quot;s08_crude_counts&quot;)
 
 # Libraries
@@ -324,7 +322,7 @@ library(dplyr)</code></pre>
 
 # Update working folders
 base_folder &lt;- &quot;/Users/alexey/Documents&quot;
-project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;)
+project_folder &lt;- file.path(base_folder,&quot;wecare&quot;,&quot;final_analysis_2021&quot;,&quot;reanalysis_wo_danish_2021&quot;,&quot;s01_wes_wecare_only&quot;)
 scripts_folder &lt;- file.path(project_folder,&quot;scripts&quot;,&quot;s08_crude_counts&quot;)
 data_folder &lt;- file.path(project_folder,&quot;data&quot;,&quot;s08_crude_counts&quot;)
 
@@ -389,10 +387,10 @@ bc8_variants.df %&gt;%
 ## 12 Pathogenic                                                     1</code></pre>
 <pre class="r"><code># Select known_pathogenic variants
 known_pathogenic &lt;- 
-  grepl(&quot;known_pathogenic&quot;,bc8_variants.df$CLNSIG) | 
+  grepl(&quot;Pathogenic&quot;,bc8_variants.df$CLNSIG) | 
   grepl(&quot;Likely_pathogenic&quot;,bc8_variants.df$CLNSIG)
 sum(known_pathogenic)</code></pre>
-<pre><code>## [1] 7</code></pre>
+<pre><code>## [1] 8</code></pre>
 <pre class="r"><code>#grepl(&quot;risk_factor&quot;,bc8_variants.df$CLNSIG)
 
 #bc8_variants.df %&gt;% 
@@ -469,6 +467,10 @@ sum(consensus_high_grade_missenses)</code></pre>
 <pre class="r"><code># Rare in gnomeD NFE
 sum(bc8_variants.df$vep_gnomAD_NFE_AF &lt;= 0.01, na.rm=T)</code></pre>
 <pre><code>## [1] 164</code></pre>
+<pre class="r"><code>min(bc8_variants.df$vep_gnomAD_NFE_AF, na.rm=T)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>max(bc8_variants.df$vep_gnomAD_NFE_AF, na.rm=T) # no rare variants with MAF&lt;0.01 and AF&gt;0.99</code></pre>
+<pre><code>## [1] 0.9149</code></pre>
 <pre class="r"><code>sum(is.na(bc8_variants.df$vep_gnomAD_NFE_AF))</code></pre>
 <pre><code>## [1] 26</code></pre>
 <pre class="r"><code>rare_in_gnomAD_NFE &lt;- bc8_variants.df$vep_gnomAD_NFE_AF &lt;= 0.01 | 
@@ -476,7 +478,15 @@ sum(bc8_variants.df$vep_gnomAD_NFE_AF &lt;= 0.01, na.rm=T)</code></pre>
 sum(rare_in_gnomAD_NFE)</code></pre>
 <pre><code>## [1] 190</code></pre>
 <pre class="r"><code># Rare in dataset
-rare_in_wecare &lt;- bc8_variants.df$total_af &lt;= 0.01
+sum(bc8_variants.df$total_af &lt;= 0.01, na.rm=T)</code></pre>
+<pre><code>## [1] 183</code></pre>
+<pre class="r"><code>min(bc8_variants.df$total_af, na.rm=T)</code></pre>
+<pre><code>## [1] 0.001492537</code></pre>
+<pre class="r"><code>max(bc8_variants.df$total_af, na.rm=T) # no rare variants with MAF&lt;0.01 and AF&gt;0.99</code></pre>
+<pre><code>## [1] 0.9298507</code></pre>
+<pre class="r"><code>sum(is.na(bc8_variants.df$total_af))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>rare_in_wecare &lt;- bc8_variants.df$total_af &lt;= 0.01
 sum(rare_in_wecare)</code></pre>
 <pre><code>## [1] 183</code></pre>
 <pre class="r"><code># Rare in controls
@@ -664,11 +674,11 @@ sum(phenotypes.df$wes_id != colnames(genotypes.mx))</code></pre>
 ##  [1] Rcpp_1.0.4.6         pillar_1.4.4         compiler_3.6.2       formatR_1.7          futile.logger_1.4.3  class_7.3-17         futile.options_1.0.1 tools_3.6.2          digest_0.6.25        evaluate_0.14        lifecycle_0.2.0      tibble_3.0.1         gtable_0.3.0         pkgconfig_2.0.3      rlang_0.4.6          cli_2.0.2            DBI_1.1.0            yaml_2.2.1           VennDiagram_1.6.20   xfun_0.15            e1071_1.7-4          stringr_1.4.0        knitr_1.29           generics_0.0.2       vctrs_0.3.1          classInt_0.4-3       grid_3.6.2           tidyselect_1.1.0     glue_1.4.1           sf_0.9-7             R6_2.4.1             fansi_0.4.1          rmarkdown_2.3        farver_2.0.3         ggplot2_3.3.2        purrr_0.3.4          lambda.r_1.2.4       magrittr_1.5         units_0.6-7          scales_1.1.1         ellipsis_0.3.1       htmltools_0.5.0      assertthat_0.2.1     colorspace_1.4-1     labeling_0.3         utf8_1.1.4           KernSmooth_2.23-17  
 ## [48] stringi_1.4.6        munsell_0.5.0        crayon_1.3.4</code></pre>
 <pre class="r"><code>Sys.time()</code></pre>
-<pre><code>## [1] &quot;2021-01-29 20:06:12 GMT&quot;</code></pre>
+<pre><code>## [1] &quot;2021-02-01 11:24:16 GMT&quot;</code></pre>
 <pre class="r"><code>gc()</code></pre>
 <pre><code>##            used  (Mb) gc trigger   (Mb) limit (Mb)  max used  (Mb)
-## Ncells  2445156 130.6    3808888  203.5         NA   3808888 203.5
-## Vcells 96154333 733.6  139851288 1067.0      16384 110165312 840.5</code></pre>
+## Ncells  2445161 130.6    3808904  203.5         NA   3808904 203.5
+## Vcells 96154464 733.7  139851489 1067.0      16384 110105513 840.1</code></pre>
 </div>
 
 
